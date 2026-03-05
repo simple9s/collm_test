@@ -11,7 +11,7 @@ import pickle
 import argparse
 from pathlib import Path
 
-from amazon_download import ensure_amazon_dataset
+from utils import download_amazon
 import json
 
 
@@ -29,7 +29,7 @@ class AmazonPreprocessor:
         """
         print(f"Preparing Amazon {year} - {category} dataset...")
 
-        review_path, meta_path = ensure_amazon_dataset(year, category)
+        review_path, meta_path = download_amazon.ensure_amazon_dataset(year, category)
 
         print(f"Loading review file: {review_path}")
 
@@ -292,13 +292,13 @@ if __name__ == '__main__':
     main()
 
 '''
-python preprocess.py \
+python data/preprocess_amazon.py \
   --year 2018 \
   --category Software \
   --output data/processed/software_2018
   
   
-  python preprocess.py \
+  python data/preprocess_amazon.py \
   --year 2023 \
   --category Beauty \
   --output data/processed/beauty_2023

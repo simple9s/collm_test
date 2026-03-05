@@ -6,8 +6,9 @@
 set -e
 
 # ============ 配置 ============
-DATA_DIR="./data/amazon2018"
-RAW_DATA="./data/raw/amazon_books_2018.csv"  # 需要自行下载
+DATASET="books"           # FIX: 数据集名称，checkpoint路径会带上此名，多数据集不互相覆盖
+DATA_DIR="./data/amazon2018/${DATASET}"
+RAW_DATA="./data/raw/amazon_${DATASET}_2018.csv"
 OUTPUT_DIR="./checkpoints"
 
 # 选择负样本数：19 or 99
@@ -41,6 +42,7 @@ echo "Step 2: Stage 0 - Pre-train CF Model"
 echo "=========================================="
 
 python train.py \
+    --dataset ${DATASET} \
     --data_dir ${DATA_DIR} \
     --n_neg ${N_NEG} \
     --stage 0 \
@@ -59,6 +61,7 @@ echo "Step 3: Stage 1 - Train Projection Layer"
 echo "=========================================="
 
 python train.py \
+    --dataset ${DATASET} \
     --data_dir ${DATA_DIR} \
     --n_neg ${N_NEG} \
     --llm_name ${LLM_NAME} \
@@ -72,7 +75,6 @@ python train.py \
     --weight_decay 1e-3 \
     --patience 10 \
     --eval_type ${EVAL_TYPE} \
-    --cf_ckpt ${OUTPUT_DIR}/cf_${CF_MODEL}.pt \
     --save_dir ${OUTPUT_DIR}
 
 # ============ Step 4: Stage 2 - 微调LLM (LoRA) ============
@@ -82,6 +84,7 @@ echo "Step 4: Stage 2 - Fine-tune LLM with LoRA"
 echo "=========================================="
 
 python train.py \
+    --dataset ${DATASET} \
     --data_dir ${DATA_DIR} \
     --n_neg ${N_NEG} \
     --llm_name ${LLM_NAME} \
@@ -98,7 +101,6 @@ python train.py \
     --lora_r 8 \
     --lora_alpha 16 \
     --eval_type ${EVAL_TYPE} \
-    --cf_ckpt ${OUTPUT_DIR}/cf_${CF_MODEL}.pt \
     --save_dir ${OUTPUT_DIR}
 
 echo ""

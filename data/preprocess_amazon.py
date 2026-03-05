@@ -241,7 +241,9 @@ class AmazonPreprocessor:
             print(f"\nGenerating data with {n_neg} negative samples...")
             
             # 训练集负采样
-            train_final = self.sample_negatives(train_df, n_items, n_neg, train_history)
+            train_last = train_df.groupby('uid').last().reset_index()  # 每个用户只保留最后一条
+            train_final = self.sample_negatives(train_last, n_items, n_neg, train_history)
+
             valid_final = self.sample_negatives(valid_df, n_items, n_neg, full_history)
             test_final = self.sample_negatives(test_df, n_items, n_neg, full_history)
             

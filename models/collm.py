@@ -105,11 +105,6 @@ class CoLLM(nn.Module):
             for param in self.cf_model.parameters():
                 param.requires_grad = False
 
-        # 3. 投影层
-        # FIX: 投影层和分类头使用 float16，与 LLM 保持一致，避免 dtype mismatch
-        self.user_projection = ProjectionLayer(cf_dim, llm_dim, n_tokens).half()
-        self.item_projection = ProjectionLayer(cf_dim, llm_dim, n_tokens).half()
-
         # 4. LLM设置
         if freeze_llm:
             for param in self.llm.parameters():
@@ -118,11 +113,9 @@ class CoLLM(nn.Module):
         if use_lora and not freeze_llm:
             self._setup_lora(lora_r, lora_alpha)
 
-        # 5. 分类头
-        # FIX: 分类头也用 float16
-        self.classifier = nn.Linear(llm_dim, 2).half()
-
-        # FIX: 缓存 prompt embedding，初始化为 None，第一次 forward 时懒加载
+        self.user_projection = ProjectionLayer(cf_dim, llm_dim, n_tokens)  # 保持 float32
+        self.item_projection = ProjectionLayer(cf_dim, llm_dim, n_tokens)  # 保持 float32
+        self.classifier = nn.Linear(llm_dim, 2)  # 保持 float32
         self._cached_prompt_emb = None
 
     def _setup_lora(self, r, alpha):
@@ -197,9 +190,9 @@ class CoLLM(nn.Module):
 
             item_cf_emb = self.cf_model.get_item_embedding(item_ids)       # [B, cf_dim]
 
-        # 2. 投影到LLM空间（已经是 float16）
-        user_llm_emb = self.user_projection(user_cf_emb.half())  # [B, n_tokens, llm_dim]
-        item_llm_emb = self.item_projection(item_cf_emb.half())  # [B, n_tokens, llm_dim]
+        # 2. 投影到LLM空间
+        user_llm_emb = self.user_projection(user_cf_emb.float()).half()
+        item_llm_emb = self.item_projection(item_cf_emb.float()).half()
 
         # 3. FIX: 使用缓存的 prompt embedding，避免每个 batch 重复计算
         prompt_embeds = self._get_prompt_emb(batch_size, device)  # [B, L, llm_dim]
@@ -214,7 +207,7 @@ class CoLLM(nn.Module):
         last_hidden = outputs.last_hidden_state[:, -1, :]  # [B, llm_dim]
 
         # 7. 分类
-        logits = self.classifier(last_hidden)  # [B, 2]
+        logits = self.classifier(last_hidden.float())
 
         return logits
 
